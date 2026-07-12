@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "check": "node src/index.js",
+    "discover": "node src/discover.js",
     "spike": "node spike/inspect-seats.js"
   },
   "keywords": [],

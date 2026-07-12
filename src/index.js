@@ -2,7 +2,7 @@ import { SHOWTIME_URLS } from "./config.js";
 import { fetchShowtimeSeats } from "./fetchSeats.js";
 import { classifyGoodSeats } from "./classifyGoodSeats.js";
 import { loadState, saveState, diffNewlyAvailable, toShowtimeState } from "./state.js";
-import { notifyTelegram } from "./notifyTelegram.js";
+import { notifyGoodSeats } from "./notifyTelegram.js";
 
 async function checkOne(showtimeUrl, state) {
   const snapshot = await fetchShowtimeSeats(showtimeUrl);
@@ -14,7 +14,7 @@ async function checkOne(showtimeUrl, state) {
   );
 
   if (newlyAvailable.length > 0) {
-    await notifyTelegram({
+    await notifyGoodSeats({
       movieTitle: snapshot.movieTitle,
       showtimeInfo: snapshot.showtimeInfo,
       showtimeUrl,

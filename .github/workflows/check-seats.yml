@@ -39,5 +39,8 @@ jobs:
             git config user.email "actions@users.noreply.github.com"
             git add data/last-seen.json
             git commit -m "Update seen-seat state [skip ci]"
+            # discover-showtimes.yml also commits to this repo independently,
+            # so rebase before pushing in case it landed a commit meanwhile.
+            git pull --rebase origin main
             git push
           fi
