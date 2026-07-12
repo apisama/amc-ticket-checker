@@ -2,8 +2,11 @@ name: Check AMC seats
 
 on:
   schedule:
-    # Every 5 minutes. GitHub may delay this under load - treat as "best effort".
-    - cron: "*/5 * * * *"
+    # Configured for every 20 minutes. In practice GitHub's scheduler is
+    # best-effort and high-frequency (<15 min) cron schedules landed 45-60
+    # min apart in testing rather than the configured interval - 20 min is a
+    # target we're more likely to actually get, not a guarantee.
+    - cron: "*/20 * * * *"
   workflow_dispatch: {}
 
 permissions:
