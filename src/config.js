@@ -52,8 +52,8 @@ export const SHOWTIME_URLS = [...new Set([...MANUAL_SHOWTIME_URLS, ...loadDiscov
 export const GOOD_SEAT_ZONE = {
   // Skip the front ~35% of rows - too close to a 70mm IMAX screen.
   rowMinFraction: 0.35,
-  // Skip only the very last row (usually against the back wall).
-  rowMaxFraction: 0.95,
+  // Include all the way to the back row.
+  rowMaxFraction: 1.0,
   // Middle 50% of each row's seat-number span (aisles/gaps make seat numbers
   // an imperfect proxy for physical position, but a good enough one).
   columnCenterFraction: 0.5,
