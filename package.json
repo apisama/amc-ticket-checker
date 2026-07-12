@@ -1,0 +1,17 @@
+{
+  "name": "amc-ticket-checker",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "check": "node src/index.js",
+    "spike": "node spike/inspect-seats.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Monitors an AMC showtime's seat map and sends a Telegram alert when a good central seat opens up.",
+  "devDependencies": {
+    "playwright": "^1.61.1"
+  }
+}

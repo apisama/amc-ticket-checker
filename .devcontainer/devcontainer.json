@@ -1,0 +1,33 @@
+{
+    "name": "Homebase DevContainer",
+    "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+    // Configure tool-specific properties
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "esbenp.prettier-vscode",
+                "eamodio.gitlens"
+            ]
+        }
+    },
+    // Features to add to the dev container
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {
+            "version": "latest"
+        },
+        "ghcr.io/devcontainers/features/github-cli:1": {
+            "version": "latest"
+        },
+        "ghcr.io/devcontainers/features/common-utils:2": {},
+        "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {}
+    },
+    // Uncomment to connect as root instead
+    "remoteUser": "root",
+    "mounts": [
+        "type=volume,target=${containerWorkspaceFolder}/node_modules",
+        "source=claude-code-config-personal,target=/root/.claude,type=volume"
+    ],
+    "containerEnv": {
+        "CLAUDE_CONFIG_DIR": "/root/.claude"
+    }
+}

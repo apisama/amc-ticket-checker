@@ -1,0 +1,43 @@
+name: Check AMC seats
+
+on:
+  schedule:
+    # Every 5 minutes. GitHub may delay this under load - treat as "best effort".
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: check-seats
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Check seats
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: npm run check
+
+      - name: Persist seen-seat state
+        run: |
+          if ! git diff --quiet -- data/last-seen.json; then
+            git config user.name "amc-ticket-checker-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add data/last-seen.json
+            git commit -m "Update seen-seat state [skip ci]"
+            git push
+          fi
