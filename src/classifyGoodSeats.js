@@ -46,3 +46,41 @@ export function classifyGoodSeats(seats, rowOrder) {
     .filter((seat) => isGoodSeatPosition(seat, { rowOrder, spans }))
     .map((seat) => ({ seatId: seat.seatId, row: seat.row, available: seat.available }));
 }
+
+// Finds runs of physically adjacent, currently-available good-zone seats
+// (consecutive seat numbers within a row, so a gap for an aisle correctly
+// breaks a run) of at least `minContiguous` seats - e.g. so a single stray
+// open seat doesn't count if you need 2+ seats together.
+export function findAvailableGoodGroups(seats, rowOrder, minContiguous) {
+  const spans = rowSpans(seats);
+  const byRow = new Map();
+  for (const seat of seats) {
+    if (!byRow.has(seat.row)) byRow.set(seat.row, []);
+    byRow.get(seat.row).push(seat);
+  }
+
+  const groups = [];
+  for (const [row, rowSeats] of byRow) {
+    const sorted = [...rowSeats].sort((a, b) => a.seatNumber - b.seatNumber);
+    let run = [];
+    const flushRun = () => {
+      if (run.length >= minContiguous) {
+        groups.push({ row, seatIds: run.map((s) => s.seatId) });
+      }
+      run = [];
+    };
+
+    for (const seat of sorted) {
+      const usable = seat.available && isGoodSeatPosition(seat, { rowOrder, spans });
+      const isAdjacent = run.length > 0 && seat.seatNumber === run[run.length - 1].seatNumber + 1;
+      if (usable && isAdjacent) {
+        run.push(seat);
+      } else {
+        flushRun();
+        run = usable ? [seat] : [];
+      }
+    }
+    flushRun();
+  }
+  return groups;
+}

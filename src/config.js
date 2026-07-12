@@ -63,6 +63,13 @@ export const GOOD_SEAT_ZONE = {
 // for guests who need it, regardless of how central it is.
 export const EXCLUDE_LABEL_PATTERN = /wheelchair/i;
 
+// Only alert when at least this many good-zone seats are open *and
+// physically adjacent* (not just any N seats open somewhere in the zone).
+// Override with MIN_CONTIGUOUS_SEATS=1 to get single-seat alerts too.
+export const MIN_CONTIGUOUS_SEATS = process.env.MIN_CONTIGUOUS_SEATS
+  ? Number(process.env.MIN_CONTIGUOUS_SEATS)
+  : 2;
+
 export const STATE_FILE = new URL("../data/last-seen.json", import.meta.url).pathname;
 
 export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;

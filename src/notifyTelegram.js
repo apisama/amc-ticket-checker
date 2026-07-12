@@ -21,12 +21,14 @@ async function sendTelegramText(text) {
   }
 }
 
-export async function notifyGoodSeats({ movieTitle, showtimeInfo, showtimeUrl, seats }) {
-  const seatList = seats.map((s) => s.seatId).join(", ");
+export async function notifyGoodSeats({ movieTitle, showtimeInfo, showtimeUrl, groups }) {
+  const groupLines = groups
+    .map((g) => `${g.seatIds.length} together: ${g.seatIds.join(", ")}`)
+    .join("\n");
   const text =
-    `🎬 Good seat${seats.length > 1 ? "s" : ""} just opened up!\n\n` +
+    `🎬 Good seats just opened up!\n\n` +
     `${movieTitle ?? "Showtime"}\n${showtimeInfo ?? ""}\n\n` +
-    `Seats: ${seatList}\n\n` +
+    `${groupLines}\n\n` +
     `Book now: ${showtimeUrl}`;
   await sendTelegramText(text);
 }
