@@ -1,8 +1,9 @@
-import { SHOWTIME_URLS, MIN_CONTIGUOUS_SEATS } from "./config.js";
+import { SHOWTIME_URLS, MIN_CONTIGUOUS_SEATS, CHECK_COOLDOWN_FILE } from "./config.js";
 import { fetchShowtimeSeats } from "./fetchSeats.js";
 import { classifyGoodSeats, findAvailableGoodGroups } from "./classifyGoodSeats.js";
 import { loadState, saveState, filterNewGroups, toShowtimeState } from "./state.js";
 import { notifyGoodSeats } from "./notifyTelegram.js";
+import { RateLimitError, loadCooldownUntil, saveCooldownUntil } from "./rateLimitState.js";
 
 async function checkOne(showtimeUrl, state) {
   const snapshot = await fetchShowtimeSeats(showtimeUrl);
@@ -28,6 +29,12 @@ async function checkOne(showtimeUrl, state) {
 }
 
 async function main() {
+  const cooldownUntil = await loadCooldownUntil(CHECK_COOLDOWN_FILE);
+  if (cooldownUntil && cooldownUntil > new Date()) {
+    console.log(`In cooldown until ${cooldownUntil.toISOString()} (AMC rate-limited us last run) - skipping.`);
+    return;
+  }
+
   const state = await loadState();
   let hadError = false;
 
@@ -37,6 +44,15 @@ async function main() {
     } catch (err) {
       hadError = true;
       console.error(`Failed checking ${showtimeUrl}:`, err.message);
+
+      if (err instanceof RateLimitError) {
+        const until = new Date(Date.now() + err.retryAfterSeconds * 1000);
+        console.error(
+          `Rate-limited - backing off until ${until.toISOString()} and skipping remaining showtimes this run.`
+        );
+        await saveCooldownUntil(CHECK_COOLDOWN_FILE, until);
+        break;
+      }
     }
   }
 

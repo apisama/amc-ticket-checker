@@ -32,12 +32,15 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: npm run check
 
-      - name: Persist seen-seat state
+      - name: Persist seen-seat and cooldown state
         run: |
-          if ! git diff --quiet -- data/last-seen.json; then
+          # `git add data/*.json` would fail hard if a file (e.g. the cooldown
+          # file, which only exists after a rate-limit) isn't present, so add
+          # the whole directory instead of naming files that might not exist.
+          if [ -n "$(git status --porcelain -- data/)" ]; then
             git config user.name "amc-ticket-checker-bot"
             git config user.email "actions@users.noreply.github.com"
-            git add data/last-seen.json
+            git add data/
             git commit -m "Update seen-seat state [skip ci]"
             # discover-showtimes.yml also commits to this repo independently,
             # so rebase before pushing in case it landed a commit meanwhile.

@@ -72,5 +72,12 @@ export const MIN_CONTIGUOUS_SEATS = process.env.MIN_CONTIGUOUS_SEATS
 
 export const STATE_FILE = new URL("../data/last-seen.json", import.meta.url).pathname;
 
+// If AMC blocks us and doesn't send a usable Retry-After, back off this long
+// before trying again. check-seats.yml and discover-showtimes.yml track
+// their cooldowns separately since they hit different endpoints.
+export const DEFAULT_RATE_LIMIT_BACKOFF_SECONDS = 20 * 60;
+export const CHECK_COOLDOWN_FILE = new URL("../data/check-cooldown.json", import.meta.url).pathname;
+export const DISCOVER_COOLDOWN_FILE = new URL("../data/discover-cooldown.json", import.meta.url).pathname;
+
 export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 export const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;

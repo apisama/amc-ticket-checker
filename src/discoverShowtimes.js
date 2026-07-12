@@ -1,3 +1,6 @@
+import { RateLimitError, parseRetryAfterSeconds } from "./rateLimitState.js";
+import { DEFAULT_RATE_LIMIT_BACKOFF_SECONDS } from "./config.js";
+
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
@@ -21,8 +24,20 @@ function toDateLabel(date) {
 async function fetchShowtimeIdsForDate({ movieSlug, theatreSlug, date }) {
   const url = `https://www.amctheatres.com/movies/${movieSlug}/showtimes?theatre=${theatreSlug}&date=${toDateParam(date)}`;
   const res = await fetch(url, { headers: { "user-agent": USER_AGENT } });
+
+  if (res.status === 429 || res.status === 403) {
+    const retryAfterSeconds = parseRetryAfterSeconds(
+      res.headers.get("retry-after"),
+      DEFAULT_RATE_LIMIT_BACKOFF_SECONDS
+    );
+    throw new RateLimitError(`${url} -> HTTP ${res.status} (rate-limited)`, retryAfterSeconds);
+  }
   if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+
   const html = await res.text();
+  if (/error 1015|checking your browser|attention required/i.test(html.slice(0, 2000))) {
+    throw new RateLimitError(`${url} -> blocked (Cloudflare challenge page)`, DEFAULT_RATE_LIMIT_BACKOFF_SECONDS);
+  }
   const ids = new Set();
   for (const match of html.matchAll(/\/showtimes\/(\d+)/g)) {
     ids.add(match[1]);
@@ -48,6 +63,12 @@ export async function discoverShowtimeUrls({ movieSlug, theatreSlug, windowDays 
         if (!found.has(showtimeUrl)) found.set(showtimeUrl, toDateLabel(date));
       }
     } catch (err) {
+      if (err instanceof RateLimitError) {
+        // Stop hammering AMC once we're blocked - let the caller persist the
+        // cooldown and retry the whole scan later instead of ploughing
+        // through the remaining days in the window right now.
+        throw err;
+      }
       console.error(`Discovery failed for ${toDateParam(date)}:`, err.message);
     }
 

@@ -1,4 +1,6 @@
 import { chromium } from "playwright";
+import { RateLimitError, parseRetryAfterSeconds } from "./rateLimitState.js";
+import { DEFAULT_RATE_LIMIT_BACKOFF_SECONDS } from "./config.js";
 
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -11,7 +13,7 @@ export async function fetchShowtimeSeats(showtimeUrl) {
   try {
     const context = await browser.newContext({ userAgent: USER_AGENT });
     const page = await context.newPage();
-    await page.goto(showtimeUrl, { waitUntil: "networkidle", timeout: 45000 });
+    const response = await page.goto(showtimeUrl, { waitUntil: "networkidle", timeout: 45000 });
 
     await page
       .locator("button", { hasText: /^(Accept|Close|Got it)/i })
@@ -61,14 +63,27 @@ export async function fetchShowtimeSeats(showtimeUrl) {
     });
 
     if (!info) {
-      const diagnosis = await page.evaluate(() => {
-        const text = document.body.innerText.slice(0, 300);
-        if (/rate limit|error 1015|checking your browser|attention required/i.test(text)) {
-          return `blocked/rate-limited by AMC's site: ${text.split("\n")[0]}`;
-        }
-        return `unrecognized page (title: "${document.title}"): ${text.slice(0, 150)}`;
-      });
-      throw new Error(`Seat map container not found - ${diagnosis}`);
+      const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 300));
+      const status = response?.status();
+      const isBlocked =
+        status === 429 ||
+        status === 403 ||
+        /rate limit|error 1015|checking your browser|attention required/i.test(bodyText);
+
+      if (isBlocked) {
+        const retryAfterSeconds = parseRetryAfterSeconds(
+          response?.headers()["retry-after"],
+          DEFAULT_RATE_LIMIT_BACKOFF_SECONDS
+        );
+        throw new RateLimitError(
+          `Blocked/rate-limited by AMC (HTTP ${status}): ${bodyText.split("\n")[0]}`,
+          retryAfterSeconds
+        );
+      }
+
+      throw new Error(
+        `Seat map container not found - unrecognized page (HTTP ${status}, title: "${await page.title()}"): ${bodyText.slice(0, 150)}`
+      );
     }
 
     const rowOrder = info.rows.map((r) => r.rowLetter);

@@ -1,8 +1,9 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { MOVIE_SLUG, THEATRE_SLUG, DISCOVERY_WINDOW_DAYS, DISCOVERED_STATE_FILE } from "./config.js";
+import { MOVIE_SLUG, THEATRE_SLUG, DISCOVERY_WINDOW_DAYS, DISCOVERED_STATE_FILE, DISCOVER_COOLDOWN_FILE } from "./config.js";
 import { discoverShowtimeUrls } from "./discoverShowtimes.js";
 import { notifyNewShowtime } from "./notifyTelegram.js";
+import { RateLimitError, loadCooldownUntil, saveCooldownUntil } from "./rateLimitState.js";
 
 async function loadKnown() {
   try {
@@ -14,12 +15,30 @@ async function loadKnown() {
 }
 
 async function main() {
+  const cooldownUntil = await loadCooldownUntil(DISCOVER_COOLDOWN_FILE);
+  if (cooldownUntil && cooldownUntil > new Date()) {
+    console.log(`In cooldown until ${cooldownUntil.toISOString()} (AMC rate-limited us last run) - skipping.`);
+    return;
+  }
+
   const known = await loadKnown();
-  const found = await discoverShowtimeUrls({
-    movieSlug: MOVIE_SLUG,
-    theatreSlug: THEATRE_SLUG,
-    windowDays: DISCOVERY_WINDOW_DAYS,
-  });
+  let found;
+  try {
+    found = await discoverShowtimeUrls({
+      movieSlug: MOVIE_SLUG,
+      theatreSlug: THEATRE_SLUG,
+      windowDays: DISCOVERY_WINDOW_DAYS,
+    });
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      const until = new Date(Date.now() + err.retryAfterSeconds * 1000);
+      console.error(`Rate-limited (${err.message}) - backing off until ${until.toISOString()}.`);
+      await saveCooldownUntil(DISCOVER_COOLDOWN_FILE, until);
+      process.exitCode = 1;
+      return;
+    }
+    throw err;
+  }
 
   const updated = { ...known };
   let newCount = 0;
