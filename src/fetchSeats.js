@@ -61,7 +61,14 @@ export async function fetchShowtimeSeats(showtimeUrl) {
     });
 
     if (!info) {
-      throw new Error("Seat map container not found - page may not have loaded or layout changed.");
+      const diagnosis = await page.evaluate(() => {
+        const text = document.body.innerText.slice(0, 300);
+        if (/rate limit|error 1015|checking your browser|attention required/i.test(text)) {
+          return `blocked/rate-limited by AMC's site: ${text.split("\n")[0]}`;
+        }
+        return `unrecognized page (title: "${document.title}"): ${text.slice(0, 150)}`;
+      });
+      throw new Error(`Seat map container not found - ${diagnosis}`);
     }
 
     const rowOrder = info.rows.map((r) => r.rowLetter);
